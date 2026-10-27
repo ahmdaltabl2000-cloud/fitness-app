@@ -1,0 +1,1466 @@
+<!DOCTYPE html>
+<html lang="de" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  
+  <!-- Apple iPhone Web-App (PWA) Meta Tags -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Fitness-Start" />
+  <meta name="theme-color" content="#020617" />
+  
+  <!-- Dynamic SVG App Icon for iPhone Home Screen -->
+  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect width='180' height='180' rx='40' fill='%23020617'/><rect x='10' y='10' width='160' height='160' rx='32' fill='%2310b981' fill-opacity='0.15' stroke='%2310b981' stroke-width='4'/><path d='M52 90h76M42 68v44M54 58v64M126 58v64M138 68v44' stroke='%2310b981' stroke-width='12' stroke-linecap='round'/></svg>" />
+
+  <title>Mein Fitness-Start</title>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['-apple-system', 'BlinkMacSystemFont', 'Inter', 'Segoe UI', 'Roboto', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* iOS Safe Area & Native App Feel */
+    :root {
+      --sat: env(safe-area-inset-top, 0px);
+      --sab: env(safe-area-inset-bottom, 0px);
+    }
+    body {
+      background-color: #020617;
+      color: #f8fafc;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-touch-callout: none;
+      user-select: none;
+      overscroll-behavior-y: none;
+    }
+    input {
+      user-select: auto;
+    }
+    .safe-top {
+      padding-top: max(0.85rem, env(safe-area-inset-top));
+    }
+    .safe-bottom {
+      padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+    }
+    @keyframes pulseGlow {
+      0%, 100% { opacity: 1; filter: drop-shadow(0 0 6px rgba(16, 185, 129, 0.7)); }
+      50% { opacity: 0.65; filter: drop-shadow(0 0 2px rgba(16, 185, 129, 0.3)); }
+    }
+    .muscle-glow {
+      animation: pulseGlow 2s infinite ease-in-out;
+    }
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-view {
+      animation: slideUp 0.22s ease-out forwards;
+    }
+    /* Hide number input arrows for cleaner iOS UI */
+    input[type=number]::-webkit-inner-spin-button, 
+    input[type=number]::-webkit-outer-spin-button { 
+      -webkit-appearance: none; 
+      margin: 0; 
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between pb-28">
+
+  <!-- TOAST NOTIFICATION -->
+  <div id="toast" class="fixed top-14 left-1/2 -translate-x-1/2 z-50 hidden bg-emerald-500 text-slate-950 font-extrabold px-5 py-3 rounded-full shadow-2xl shadow-emerald-500/30 items-center gap-2 text-xs sm:text-sm transition-all">
+    <span>✨</span>
+    <span id="toast-text">Gespeichert!</span>
+  </div>
+
+  <!-- FLOATING REST TIMER BAR -->
+  <div id="rest-timer-bar" class="fixed bottom-24 left-1/2 -translate-x-1/2 z-40 w-[92%] max-w-md hidden bg-slate-900/95 backdrop-blur-xl border-2 border-emerald-500/60 rounded-2xl p-3.5 shadow-2xl">
+    <div class="flex items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div id="timer-display" class="w-12 h-12 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 font-black text-base shrink-0">
+          60s
+        </div>
+        <div class="flex-1">
+          <div class="flex items-center justify-between">
+            <p class="text-xs text-white font-bold">Satzpause läuft – Durchatmen!</p>
+          </div>
+          <div class="w-36 sm:w-48 h-2.5 bg-slate-800 rounded-full overflow-hidden mt-1.5">
+            <div id="timer-progress" class="h-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-300" style="width: 100%"></div>
+          </div>
+        </div>
+      </div>
+      <div class="flex items-center gap-1.5 shrink-0">
+        <button onclick="adjustTimer(15)" class="px-3 py-2 text-xs font-extrabold bg-slate-800 active:bg-slate-700 rounded-xl text-slate-200 border border-slate-700">
+          +15s
+        </button>
+        <button onclick="stopTimer()" class="px-3 py-2 text-xs font-extrabold bg-rose-500/20 text-rose-300 active:bg-rose-500/30 border border-rose-500/30 rounded-xl">
+          Skip
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- STICKY iOS HEADER -->
+  <header class="bg-slate-900/85 backdrop-blur-xl border-b border-slate-800/80 sticky top-0 z-30 safe-top">
+    <div class="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/20 shrink-0">
+          <svg class="w-6 h-6 text-slate-950" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 5v14M18 5v14M2 9v6M22 9v6M6 12h12"/>
+          </svg>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-base sm:text-lg font-extrabold tracking-tight text-white">Mein Fitness-Start</h1>
+            <span id="header-emergency-badge" class="hidden text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded-full font-extrabold">
+              ⚡ 10-Min
+            </span>
+          </div>
+          <p class="text-[11px] text-slate-400">Dein Begleiter fürs Gym & Zuhause</p>
+        </div>
+      </div>
+
+      <!-- Streak Counter Pill -->
+      <div onclick="switchTab('dashboard')" class="cursor-pointer flex items-center gap-1.5 bg-slate-800/90 border border-slate-700/80 px-3 py-1.5 rounded-full active:scale-95 transition">
+        <span class="text-sm">🔥</span>
+        <span id="header-streak-text" class="text-xs font-extrabold text-slate-100">0 / 2</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN CONTENT CONTAINER -->
+  <main id="app-content" class="max-w-3xl w-full mx-auto px-4 pt-5 space-y-6 flex-1"></main>
+
+  <!-- BOTTOM iOS TAB BAR -->
+  <nav class="fixed bottom-0 left-0 right-0 z-30 bg-slate-900/95 backdrop-blur-xl border-t border-slate-800/90 safe-bottom">
+    <div class="max-w-md mx-auto px-3 pt-1.5 grid grid-cols-3 gap-2">
+      <button id="nav-dashboard" onclick="switchTab('dashboard')" class="flex flex-col items-center justify-center py-2 rounded-2xl transition active:scale-95">
+        <svg class="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z"/>
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9.879 16.121A3 3 0 1012.015 11L11 14H9c0 .768.293 1.536.879 2.121z"/>
+        </svg>
+        <span class="text-[11px] font-bold">Start & Motivation</span>
+      </button>
+
+      <button id="nav-workout" onclick="switchTab('workout')" class="flex flex-col items-center justify-center py-2 rounded-2xl transition active:scale-95">
+        <svg class="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 5v14M18 5v14M2 9v6M22 9v6M6 12h12"/>
+        </svg>
+        <span class="text-[11px] font-bold">Trainingsplan</span>
+      </button>
+
+      <button id="nav-nutrition" onclick="switchTab('nutrition')" class="flex flex-col items-center justify-center py-2 rounded-2xl transition active:scale-95">
+        <svg class="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
+        </svg>
+        <span class="text-[11px] font-bold">Essensplan</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- APPLICATION LOGIC & DATA -->
+  <script>
+    // ==========================================
+    // 1. STATE MANAGEMENT (Saved in localStorage)
+    // ==========================================
+    const STATE = {
+      activeTab: 'dashboard', // 'dashboard' | 'workout' | 'nutrition'
+      emergencyMode: localStorage.getItem('mfs_emergency') === 'true',
+      selectedPlan: localStorage.getItem('mfs_selected_plan') || 'planA', // 'planA' | 'planB' | 'emergency'
+      weeklyGoal: Number(localStorage.getItem('mfs_weekly_goal')) || 2,
+      workoutLogs: JSON.parse(localStorage.getItem('mfs_workout_logs') || '[]'),
+      weights: JSON.parse(localStorage.getItem('mfs_weights') || '{}'),
+      completedSets: JSON.parse(localStorage.getItem('mfs_completed_sets') || '{}'),
+      expandedSteps: {},
+      bodyWeight: Number(localStorage.getItem('mfs_body_weight')) || 78,
+      nutritionGoal: localStorage.getItem('mfs_nutrition_goal') || 'recomp', // 'lose' | 'recomp' | 'gain'
+      selectedMeals: JSON.parse(localStorage.getItem('mfs_selected_meals') || '{"breakfast":"b1","main":"m1","snack":"s1","shake":"p1"}'),
+      shoppingList: JSON.parse(localStorage.getItem('mfs_shopping_list') || '[{"id":1,"text":"250g Skyr Natur","checked":false},{"id":2,"text":"Hähnchenbrustfilet","checked":false},{"id":3,"text":"Haferflocken","checked":false}]'),
+      waterGlasses: Number(localStorage.getItem('mfs_water')) || 3
+    };
+
+    function saveState() {
+      localStorage.setItem('mfs_emergency', STATE.emergencyMode);
+      localStorage.setItem('mfs_selected_plan', STATE.selectedPlan);
+      localStorage.setItem('mfs_weekly_goal', STATE.weeklyGoal);
+      localStorage.setItem('mfs_workout_logs', JSON.stringify(STATE.workoutLogs));
+      localStorage.setItem('mfs_weights', JSON.stringify(STATE.weights));
+      localStorage.setItem('mfs_completed_sets', JSON.stringify(STATE.completedSets));
+      localStorage.setItem('mfs_body_weight', STATE.bodyWeight);
+      localStorage.setItem('mfs_nutrition_goal', STATE.nutritionGoal);
+      localStorage.setItem('mfs_selected_meals', JSON.stringify(STATE.selectedMeals));
+      localStorage.setItem('mfs_shopping_list', JSON.stringify(STATE.shoppingList));
+      localStorage.setItem('mfs_water', STATE.waterGlasses);
+      updateHeaderUI();
+    }
+
+    // ==========================================
+    // 2. DETAILED SVG ILLUSTRATIONS FOR MACHINES
+    // ==========================================
+    function getExerciseSVG(type) {
+      switch (type) {
+        case 'leg_press':
+          return `
+            <svg viewBox="0 0 300 185" class="w-full h-44 bg-slate-950 rounded-xl border border-slate-800 p-2">
+              <defs>
+                <linearGradient id="mg1" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0%" stop-color="#10b981"/>
+                  <stop offset="100%" stop-color="#059669"/>
+                </linearGradient>
+              </defs>
+              <!-- Machine Base & Seat -->
+              <line x1="20" y1="160" x2="275" y2="160" stroke="#334155" stroke-width="5" stroke-linecap="round"/>
+              <line x1="48" y1="95" x2="88" y2="142" stroke="#64748b" stroke-width="9" stroke-linecap="round"/>
+              <line x1="88" y1="142" x2="128" y2="148" stroke="#64748b" stroke-width="9" stroke-linecap="round"/>
+              <!-- Sled Rail -->
+              <line x1="125" y1="160" x2="250" y2="55" stroke="#475569" stroke-width="6" stroke-dasharray="5 5"/>
+              <!-- Footplate -->
+              <line x1="172" y1="68" x2="198" y2="115" stroke="#94a3b8" stroke-width="9" stroke-linecap="round"/>
+              <rect x="188" y="65" width="38" height="24" rx="5" fill="#0ea5e9" opacity="0.85" transform="rotate(-38 188 65)"/>
+              <!-- Athlete -->
+              <circle cx="66" cy="76" r="11" fill="#e2e8f0"/>
+              <line x1="72" y1="88" x2="100" y2="136" stroke="#cbd5e1" stroke-width="13" stroke-linecap="round"/>
+              <!-- Highlighted Target Muscles: Quads & Glutes -->
+              <circle cx="102" cy="136" r="9.5" fill="url(#mg1)" class="muscle-glow"/>
+              <line x1="102" y1="136" x2="136" y2="100" stroke="url(#mg1)" stroke-width="12" stroke-linecap="round" class="muscle-glow"/>
+              <!-- Lower Leg -->
+              <line x1="136" y1="100" x2="178" y2="95" stroke="#e2e8f0" stroke-width="8" stroke-linecap="round"/>
+              <!-- Direction Arrow -->
+              <line x1="205" y1="112" x2="240" y2="82" stroke="#10b981" stroke-width="3.5"/>
+              <polygon points="243,79 231,82 238,90" fill="#10b981"/>
+              <text x="14" y="24" fill="#10b981" font-size="11" font-weight="bold">Zielmuskel: Oberschenkel & Po (Grün)</text>
+              <text x="14" y="40" fill="#94a3b8" font-size="10">Platte kraftvoll wegdrücken • Knie leicht gebeugt lassen</text>
+            </svg>`;
+
+        case 'chest_press':
+          return `
+            <svg viewBox="0 0 300 185" class="w-full h-44 bg-slate-950 rounded-xl border border-slate-800 p-2">
+              <!-- Frame & Backrest -->
+              <line x1="72" y1="25" x2="72" y2="162" stroke="#475569" stroke-width="6"/>
+              <line x1="40" y1="162" x2="250" y2="162" stroke="#334155" stroke-width="5"/>
+              <line x1="88" y1="55" x2="88" y2="135" stroke="#64748b" stroke-width="8" stroke-linecap="round"/>
+              <line x1="88" y1="126" x2="126" y2="126" stroke="#64748b" stroke-width="8" stroke-linecap="round"/>
+              <!-- Athlete -->
+              <circle cx="106" cy="62" r="11" fill="#e2e8f0"/>
+              <line x1="106" y1="76" x2="106" y2="124" stroke="#cbd5e1" stroke-width="13" stroke-linecap="round"/>
+              <!-- Target Muscle: Chest & Front Delts -->
+              <ellipse cx="112" cy="92" rx="9" ry="13" fill="#10b981" class="muscle-glow"/>
+              <circle cx="107" cy="83" r="7.5" fill="#34d399" class="muscle-glow"/>
+              <!-- Legs -->
+              <line x1="106" y1="124" x2="142" y2="126" stroke="#94a3b8" stroke-width="9" stroke-linecap="round"/>
+              <line x1="142" y1="126" x2="146" y2="158" stroke="#94a3b8" stroke-width="8" stroke-linecap="round"/>
+              <!-- Arm pushing lever -->
+              <line x1="107" y1="85" x2="172" y2="85" stroke="#10b981" stroke-width="8" stroke-linecap="round"/>
+              <line x1="140" y1="28" x2="175" y2="96" stroke="#94a3b8" stroke-width="5"/>
+              <circle cx="175" cy="85" r="5.5" fill="#f59e0b"/>
+              <!-- Push Arrow -->
+              <line x1="186" y1="85" x2="228" y2="85" stroke="#10b981" stroke-width="3.5"/>
+              <polygon points="232,85 220,79 220,91" fill="#10b981"/>
+              <text x="14" y="24" fill="#10b981" font-size="11" font-weight="bold">Zielmuskel: Brust, vordere Schulter & Trizeps</text>
+              <text x="14" y="150" fill="#94a3b8" font-size="10">Schultern tief lassen • Griffe nach vorne drücken</text>
+            </svg>`;
+
+        case 'lat_pulldown':
+          return `
+            <svg viewBox="0 0 300 185" class="w-full h-44 bg-slate-950 rounded-xl border border-slate-800 p-2">
+              <!-- Machine Tower & Cable -->
+              <line x1="215" y1="20" x2="215" y2="165" stroke="#475569" stroke-width="6"/>
+              <line x1="135" y1="20" x2="215" y2="20" stroke="#475569" stroke-width="6"/>
+              <line x1="145" y1="20" x2="145" y2="48" stroke="#94a3b8" stroke-width="2.5"/>
+              <!-- Wide Bar -->
+              <line x1="100" y1="48" x2="190" y2="48" stroke="#f59e0b" stroke-width="5" stroke-linecap="round"/>
+              <!-- Seat & Leg Rollers -->
+              <line x1="125" y1="138" x2="165" y2="138" stroke="#64748b" stroke-width="7" stroke-linecap="round"/>
+              <circle cx="168" cy="118" r="7" fill="#475569"/>
+              <!-- Athlete Torso (V-Taper Lats Highlighted) -->
+              <circle cx="145" cy="78" r="10.5" fill="#e2e8f0"/>
+              <polygon points="129,92 161,92 153,135 137,135" fill="#10b981" class="muscle-glow"/>
+              <!-- Arms pulling down -->
+              <line x1="131" y1="95" x2="110" y2="50" stroke="#e2e8f0" stroke-width="6.5" stroke-linecap="round"/>
+              <line x1="159" y1="95" x2="180" y2="50" stroke="#e2e8f0" stroke-width="6.5" stroke-linecap="round"/>
+              <!-- Pull Arrows -->
+              <line x1="88" y1="45" x2="88" y2="85" stroke="#10b981" stroke-width="3.5"/>
+              <polygon points="88,89 82,78 94,78" fill="#10b981"/>
+              <text x="14" y="24" fill="#10b981" font-size="11" font-weight="bold">Zielmuskel: Breiter Rücken (Latissimus) & Bizeps</text>
+              <text x="14" y="172" fill="#94a3b8" font-size="10">Stange vor dem Kopf zur oberen Brust ziehen</text>
+            </svg>`;
+
+        case 'seated_row':
+          return `
+            <svg viewBox="0 0 300 185" class="w-full h-44 bg-slate-950 rounded-xl border border-slate-800 p-2">
+              <!-- Frame & Pulley -->
+              <line x1="235" y1="35" x2="235" y2="160" stroke="#475569" stroke-width="6"/>
+              <line x1="45" y1="160" x2="255" y2="160" stroke="#334155" stroke-width="5"/>
+              <line x1="95" y1="132" x2="135" y2="132" stroke="#64748b" stroke-width="8" stroke-linecap="round"/>
+              <line x1="142" y1="80" x2="142" y2="118" stroke="#64748b" stroke-width="6" stroke-linecap="round"/>
+              <!-- Athlete -->
+              <circle cx="114" cy="64" r="11" fill="#e2e8f0"/>
+              <line x1="114" y1="78" x2="114" y2="128" stroke="#cbd5e1" stroke-width="13" stroke-linecap="round"/>
+              <!-- Upper Back Highlight -->
+              <rect x="100" y="80" width="13" height="34" rx="5" fill="#10b981" class="muscle-glow"/>
+              <!-- Arm & Cable -->
+              <line x1="114" y1="90" x2="162" y2="96" stroke="#34d399" stroke-width="7.5" stroke-linecap="round"/>
+              <line x1="162" y1="96" x2="235" y2="96" stroke="#94a3b8" stroke-width="3" stroke-dasharray="4 4"/>
+              <!-- Pull Arrow -->
+              <line x1="208" y1="74" x2="164" y2="74" stroke="#10b981" stroke-width="3.5"/>
+              <polygon points="159,74 170,68 170,80" fill="#10b981"/>
+              <text x="14" y="24" fill="#10b981" font-size="11" font-weight="bold">Zielmuskel: Oberer Rücken & Gesunde Haltung</text>
+              <text x="14" y="42" fill="#94a3b8" font-size="10">Schulterblätter hinten aktiv zusammenziehen</text>
+            </svg>`;
+
+        case 'shoulder_press':
+          return `
+            <svg viewBox="0 0 300 185" class="w-full h-44 bg-slate-950 rounded-xl border border-slate-800 p-2">
+              <!-- Seat -->
+              <line x1="150" y1="75" x2="150" y2="152" stroke="#64748b" stroke-width="8" stroke-linecap="round"/>
+              <line x1="125" y1="152" x2="175" y2="152" stroke="#64748b" stroke-width="7" stroke-linecap="round"/>
+              <!-- Athlete -->
+              <circle cx="150" cy="72" r="11" fill="#e2e8f0"/>
+              <rect x="135" y="86" width="30" height="50" rx="6" fill="#cbd5e1"/>
+              <!-- Highlighted Shoulders (Deltoids) -->
+              <circle cx="128" cy="92" r="9.5" fill="#10b981" class="muscle-glow"/>
+              <circle cx="172" cy="92" r="9.5" fill="#10b981" class="muscle-glow"/>
+              <!-- Arms Pressing Up -->
+              <polyline points="124,92 106,82 110,48" fill="none" stroke="#e2e8f0" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round"/>
+              <polyline points="176,92 194,82 190,48" fill="none" stroke="#e2e8f0" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round"/>
+              <!-- Handles -->
+              <line x1="98" y1="48" x2="120" y2="48" stroke="#f59e0b" stroke-width="5" stroke-linecap="round"/>
+              <line x1="180" y1="48" x2="202" y2="48" stroke="#f59e0b" stroke-width="5" stroke-linecap="round"/>
+              <!-- Arrow Up -->
+              <line x1="82" y1="80" x2="82" y2="42" stroke="#10b981" stroke-width="3.5"/>
+              <polygon points="82,37 76,48 88,48" fill="#10b981"/>
+              <text x="14" y="24" fill="#10b981" font-size="11" font-weight="bold">Zielmuskel: Schultern & Trizeps</text>
+              <text x="14" y="172" fill="#94a3b8" font-size="10">Griffe kontrolliert über Kopf nach oben drücken</text>
+            </svg>`;
+
+        case 'leg_curl':
+          return `
+            <svg viewBox="0 0 300 185" class="w-full h-44 bg-slate-950 rounded-xl border border-slate-800 p-2">
+              <!-- Machine Seat -->
+              <line x1="82" y1="68" x2="82" y2="128" stroke="#64748b" stroke-width="8" stroke-linecap="round"/>
+              <line x1="82" y1="128" x2="142" y2="128" stroke="#64748b" stroke-width="8" stroke-linecap="round"/>
+              <line x1="82" y1="128" x2="82" y2="164" stroke="#475569" stroke-width="6"/>
+              <!-- Athlete -->
+              <circle cx="98" cy="64" r="11" fill="#e2e8f0"/>
+              <line x1="98" y1="78" x2="98" y2="122" stroke="#cbd5e1" stroke-width="12" stroke-linecap="round"/>
+              <!-- Highlighted Hamstrings -->
+              <line x1="100" y1="124" x2="155" y2="124" stroke="#10b981" stroke-width="12" stroke-linecap="round" class="muscle-glow"/>
+              <!-- Lower Leg Curling Down -->
+              <line x1="155" y1="124" x2="144" y2="160" stroke="#e2e8f0" stroke-width="8" stroke-linecap="round"/>
+              <circle cx="141" cy="155" r="6" fill="#f59e0b"/>
+              <!-- Curved Motion Arrow -->
+              <path d="M 195 124 Q 190 158 158 160" fill="none" stroke="#10b981" stroke-width="3.5"/>
+              <polygon points="155,160 166,154 165,165" fill="#10b981"/>
+              <text x="14" y="24" fill="#10b981" font-size="11" font-weight="bold">Zielmuskel: Beinrückseite (Beinbeuger)</text>
+              <text x="14" y="42" fill="#94a3b8" font-size="10">Polsterrolle mit den Fersen weit unter den Sitz ziehen</text>
+            </svg>`;
+
+        case 'core_plank':
+        default:
+          return `
+            <svg viewBox="0 0 300 185" class="w-full h-44 bg-slate-950 rounded-xl border border-slate-800 p-2">
+              <!-- Gym Mat -->
+              <line x1="35" y1="148" x2="265" y2="148" stroke="#0ea5e9" stroke-width="5" stroke-linecap="round"/>
+              <!-- Athlete in Plank -->
+              <circle cx="215" cy="96" r="10.5" fill="#e2e8f0"/>
+              <!-- Highlighted Core & Abs -->
+              <line x1="130" y1="114" x2="200" y2="100" stroke="#10b981" stroke-width="14" stroke-linecap="round" class="muscle-glow"/>
+              <!-- Legs -->
+              <line x1="65" y1="140" x2="130" y2="114" stroke="#cbd5e1" stroke-width="10" stroke-linecap="round"/>
+              <!-- Forearms -->
+              <polyline points="196,103 193,143 215,143" fill="none" stroke="#e2e8f0" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+              <text x="14" y="24" fill="#10b981" font-size="11" font-weight="bold">Zielmuskel: Bauch & Rumpf (Core)</text>
+              <text x="14" y="42" fill="#94a3b8" font-size="10">Körper bildet eine gerade Linie • Bauchnabel einziehen</text>
+            </svg>`;
+      }
+    }
+
+    // ==========================================
+    // 3. WORKOUT PLANS DATABASE
+    // ==========================================
+    const WORKOUT_PLANS = {
+      planA: {
+        id: 'planA',
+        title: 'Training A (Ganzkörper Fokus 1)',
+        subtitle: 'Grundübungen an geführten Maschinen – sicher & effektiv',
+        duration: 'ca. 35–40 Min.',
+        exercises: [
+          {
+            id: 'ex_legpress',
+            name: '1. Beinpresse (Leg Press)',
+            machine: 'Sitzende Beinpresse-Maschine',
+            svg: 'leg_press',
+            muscle: 'Oberschenkel & Po',
+            sets: 3,
+            reps: '10–12 Wdh.',
+            defaultWeight: 40,
+            isEmergency: true,
+            steps: [
+              'Sitzabstand so einstellen, dass die Knie im Startwinkel ca. 90 Grad gebeugt sind.',
+              'Füße schulterbreit mittig auf die Fußplatte stellen.',
+              'Gewicht über die ganze Fußsohle wegdrücken – Knie am Ende NICHT ganz durchdrücken!',
+              'Langsam (2 Sek.) wieder zurückführen.'
+            ]
+          },
+          {
+            id: 'ex_chestpress',
+            name: '2. Brustpresse (Chest Press)',
+            machine: 'Sitzende Brustpresse',
+            svg: 'chest_press',
+            muscle: 'Brust, vordere Schulter & Trizeps',
+            sets: 3,
+            reps: '10–12 Wdh.',
+            defaultWeight: 20,
+            isEmergency: true,
+            steps: [
+              'Sitzhöhe so einstellen, dass sich die Griffe genau auf mittlerer Brusthöhe befinden.',
+              'Rücken und Hinterkopf bleiben fest am Polster, Schultern bewusst nach unten ziehen.',
+              'Griffe kontrolliert nach vorne drücken und dabei ausatmen.',
+              'Langsam zurückführen, bis die Gewichte fast aufsetzen.'
+            ]
+          },
+          {
+            id: 'ex_latpull',
+            name: '3. Latzug zur Brust (Lat Pulldown)',
+            machine: 'Latzug-Maschine',
+            svg: 'lat_pulldown',
+            muscle: 'Breiter Rücken & Bizeps',
+            sets: 3,
+            reps: '10–12 Wdh.',
+            defaultWeight: 25,
+            isEmergency: false,
+            steps: [
+              'Stange etwas breiter als schulterbreit greifen, Oberschenkel unter das Polster klemmen.',
+              'Brust stolz aufrichten und den Oberkörper minimal nach hinten neigen.',
+              'Stange aus den Ellbogen heraus bis zur oberen Brust (unter das Kinn) ziehen.',
+              'Kontrolliert wieder nach oben strecken.'
+            ]
+          },
+          {
+            id: 'ex_legcurl',
+            name: '4. Beinbeuger (Seated Leg Curl)',
+            machine: 'Sitzende Beinbeuger-Maschine',
+            svg: 'leg_curl',
+            muscle: 'Beinrückseite',
+            sets: 3,
+            reps: '12–15 Wdh.',
+            defaultWeight: 20,
+            isEmergency: false,
+            steps: [
+              'Rückenlehne so anpassen, dass die Kniekehlen genau an der Sitzkante liegen.',
+              'Unterschenkel-Polster knapp oberhalb der Knöchel einstellen.',
+              'Fersen kraftvoll so weit wie möglich unter den Sitz ziehen.',
+              '2 Sekunden langsam wieder nach oben lassen.'
+            ]
+          },
+          {
+            id: 'ex_plank',
+            name: '5. Unterarmstütz (Plank) oder Bauchmaschine',
+            machine: 'Gym-Matte oder Bauchpresse',
+            svg: 'core_plank',
+            muscle: 'Bauch & Rumpfstabilität',
+            sets: 3,
+            reps: '30–40 Sek. halten',
+            defaultWeight: 0,
+            isEmergency: false,
+            steps: [
+              'Ellbogen direkt unter den Schultern auf der Matte aufstützen.',
+              'Po und Bauch fest anspannen, damit der untere Rücken nicht durchhängt.',
+              'Ruhig und gleichmäßig weiteratmen.',
+              'Tipp für den Anfang: Du kannst auch die Knie auf der Matte ablegen.'
+            ]
+          }
+        ]
+      },
+      planB: {
+        id: 'planB',
+        title: 'Training B (Ganzkörper Fokus 2)',
+        subtitle: 'Fokus auf Rücken, Haltung, Schultern & Grundkraft',
+        duration: 'ca. 35–40 Min.',
+        exercises: [
+          {
+            id: 'ex_legpress_b',
+            name: '1. Beinpresse',
+            machine: 'Sitzende Beinpresse-Maschine',
+            svg: 'leg_press',
+            muscle: 'Oberschenkel & Po',
+            sets: 3,
+            reps: '10–12 Wdh.',
+            defaultWeight: 40,
+            isEmergency: true,
+            steps: [
+              'Gleiche Einstellung wie in Training A wählen.',
+              'Achte darauf, dass deine Knie stabil in Richtung Fußspitzen zeigen (nicht nach innen fallen).',
+              'Kraftvoll wegdrücken und kontrolliert abbremsen.'
+            ]
+          },
+          {
+            id: 'ex_seatedrow',
+            name: '2. Rudermaschine (Seated Row)',
+            machine: 'Sitzendes Rudergerät mit Brustpolster',
+            svg: 'seated_row',
+            muscle: 'Oberer Rücken & Haltung',
+            sets: 3,
+            reps: '10–12 Wdh.',
+            defaultWeight: 25,
+            isEmergency: true,
+            steps: [
+              'Sitzhöhe so einstellen, dass die Brust bequem am Vorderpolster anliegt.',
+              'Griffe fassen und die Ellbogen eng am Körper nach hinten ziehen.',
+              'Hinten für 1 Sekunde die Schulterblätter fest zusammenkneifen.',
+              'Langsam wieder nach vorne führen.'
+            ]
+          },
+          {
+            id: 'ex_shoulderpress',
+            name: '3. Schulterpresse (Shoulder Press)',
+            machine: 'Schulterpresse-Maschine',
+            svg: 'shoulder_press',
+            muscle: 'Schultern & Trizeps',
+            sets: 3,
+            reps: '10–12 Wdh.',
+            defaultWeight: 15,
+            isEmergency: false,
+            steps: [
+              'Sitz so einstellen, dass sich die Griffe im Startpunkt etwa auf Ohrenhöhe befinden.',
+              'Rücken fest gegen das Polster drücken (kein Hohlkreuz!).',
+              'Griffe kontrolliert über Kopf nach oben drücken.',
+              'Sanft wieder bis auf Kinnhöhe absenken.'
+            ]
+          },
+          {
+            id: 'ex_chestpress_b',
+            name: '4. Brustpresse (oder Butterfly)',
+            machine: 'Sitzende Brustpresse',
+            svg: 'chest_press',
+            muscle: 'Brustmuskulatur',
+            sets: 3,
+            reps: '12 Wdh.',
+            defaultWeight: 20,
+            isEmergency: false,
+            steps: [
+              'Schultern weg von den Ohren nach hinten unten ziehen.',
+              'Gleichmäßig nach vorne drücken, ohne mit dem Rücken vom Polster abzuheben.',
+              'Sauberes, ruhiges Tempo beibehalten.'
+            ]
+          },
+          {
+            id: 'ex_core_b',
+            name: '5. Rückenstrecker oder Bauchmaschine',
+            machine: 'Rückenstrecker-Gerät / Bauchmaschine',
+            svg: 'core_plank',
+            muscle: 'Unterer Rücken & Bauch',
+            sets: 3,
+            reps: '12–15 Wdh.',
+            defaultWeight: 15,
+            isEmergency: false,
+            steps: [
+              'Becken fest im Gerät positionieren.',
+              'Rumpf kontrolliert bewegen, ohne mit Schwung zu arbeiten.',
+              'In der Endposition kurz die Spannung halten.'
+            ]
+          }
+        ]
+      }
+    };
+
+    // ==========================================
+    // 4. MEAL PLAN DATABASE (4 CATEGORIES)
+    // ==========================================
+    const MEALS = {
+      breakfast: [
+        {
+          id: 'b1',
+          name: 'Power-Skyr Bowl mit Beeren',
+          time: '3 Min.',
+          kcal: 390,
+          protein: 34,
+          carbs: 45,
+          fat: 6,
+          prep: 'Skyr in eine Schüssel geben, Haferflocken und Beeren (gerne TK) unterrühren. Mit 1 TL Honig toppen.',
+          ingredients: ['250g Skyr Natur oder Vanille', '40g Haferflocken', '1 Handvoll TK-Beerenmix']
+        },
+        {
+          id: 'b2',
+          name: 'Fitness-Rührei auf Vollkorntoast',
+          time: '7 Min.',
+          kcal: 440,
+          protein: 29,
+          carbs: 34,
+          fat: 18,
+          prep: '3 Eier in der Pfanne kurz rühren, 2 Scheiben Vollkorntoast rösten und mit körnigem Frischkäse bestreichen.',
+          ingredients: ['3 Eier', '2 Scheiben Vollkorntoast', '50g Körniger Frischkäse light']
+        },
+        {
+          id: 'b3',
+          name: 'Overnight Protein-Oats (Ohne Kochen)',
+          time: '4 Min.',
+          kcal: 430,
+          protein: 35,
+          carbs: 50,
+          fat: 8,
+          prep: 'Haferflocken, Milch, Proteinpulver und 1 kleingeschnittene Banane verrühren. Sofort essen oder über Nacht kaltstellen.',
+          ingredients: ['50g Zarte Haferflocken', '30g Proteinpulver (Vanille/Schoko)', '200ml Milch (oder Hafermilch)', '1 Banane']
+        }
+      ],
+      main: [
+        {
+          id: 'm1',
+          name: '15-Minuten Hähnchen-Reis-Pfanne',
+          time: '15 Min.',
+          kcal: 580,
+          protein: 46,
+          carbs: 64,
+          fat: 11,
+          prep: 'Hähnchenwürfel anbraten, TK-Pfannengemüse und 1 Beutel Mikrowellen-Reis direkt mit in die Pfanne geben. Mit Sojasauce würzen.',
+          ingredients: ['180g Hähnchenbrustfilet (oder Tofu)', '1 Beutel Express-Reis', '200g TK-Pfannengemüse', 'Sojasauce']
+        },
+        {
+          id: 'm2',
+          name: '2x Schnelle Thunfisch- oder Puten-Wraps',
+          time: '6 Min.',
+          kcal: 540,
+          protein: 42,
+          carbs: 52,
+          fat: 14,
+          prep: 'Tortilla-Wraps mit Frischkäse light bestreichen, mit Thunfisch (oder Putenbrust), Salat und Mais belegen und fest einrollen.',
+          ingredients: ['2 Vollkorn-Tortilla-Wraps', '1 Dose Thunfisch (im eigenen Saft) oder Putenbrust', '2 EL Frischkäse light', 'Salatmix & Mais']
+        },
+        {
+          id: 'm3',
+          name: 'Ofenkartoffeln mit 250g Kräuterquark',
+          time: '10 Min. Arbeit',
+          kcal: 510,
+          protein: 33,
+          carbs: 68,
+          fat: 8,
+          prep: 'Kartoffeln halbieren und im Airfryer/Ofen 20 Min. backen (oder 8 Min. in der Mikrowelle garen). Dazu den fertigen Kräuterquark light essen.',
+          ingredients: ['350g Kartoffeln', '250g Kräuterquark light (oder Magerquark)', 'Paprikapulver & Salz']
+        }
+      ],
+      snack: [
+        {
+          id: 's1',
+          name: 'High-Protein Pudding + 1 Apfel',
+          time: '1 Min.',
+          kcal: 230,
+          protein: 21,
+          carbs: 28,
+          fat: 3,
+          prep: 'Perfekt gegen den Nachmittags-Heißhunger auf Süßes: Fertiger Protein-Pudding aus dem Kühlregal plus 1 frischer Apfel.',
+          ingredients: ['1 Becher High-Protein Pudding (200g)', '1 Apfel']
+        },
+        {
+          id: 's2',
+          name: 'Handvoll Nüsse & 2x Babybel Light',
+          time: '1 Min.',
+          kcal: 250,
+          protein: 17,
+          carbs: 4,
+          fat: 18,
+          prep: 'Kein Vorbereiten nötig – ideal für unterwegs oder im Büro.',
+          ingredients: ['25g Mandeln oder Cashewkerne', '2 Mini-Käse Light (z.B. Babybel Light)']
+        }
+      ],
+      shake: [
+        {
+          id: 'p1',
+          name: 'Klassischer Post-Workout Whey Shake + Banane',
+          time: '2 Min.',
+          kcal: 240,
+          protein: 26,
+          carbs: 27,
+          fat: 2,
+          prep: '30g Whey-Protein im Shaker mit 300ml kaltem Wasser oder Milch kräftig schütteln. Direkt nach dem Training trinken.',
+          ingredients: ['30g Whey Proteinpulver', '1 Banane nach dem Sport']
+        },
+        {
+          id: 'p2',
+          name: 'Fertiger Protein-Drink aus dem Supermarkt',
+          time: '0 Min.',
+          kcal: 210,
+          protein: 35,
+          carbs: 12,
+          fat: 2,
+          prep: 'Wenn du keinen Shaker spülen willst: Einfach eine fertige Proteinmilch (35g Protein) kalt genießen.',
+          ingredients: ['1 Flasche Fertig-Proteindrink (z.B. 35g Protein)']
+        }
+      ]
+    };
+
+    // ==========================================
+    // 5. TIMER LOGIC (60s REST TIMER)
+    // ==========================================
+    let timerInterval = null;
+    let timerRemaining = 0;
+    let timerMax = 60;
+
+    function startTimer(seconds = 60) {
+      clearInterval(timerInterval);
+      timerMax = seconds;
+      timerRemaining = seconds;
+      const bar = document.getElementById('rest-timer-bar');
+      bar.classList.remove('hidden');
+      updateTimerUI();
+
+      timerInterval = setInterval(() => {
+        timerRemaining--;
+        if (timerRemaining <= 0) {
+          stopTimer();
+          showToast('💪 Pause vorbei! Nächster Satz kann starten.');
+        } else {
+          updateTimerUI();
+        }
+      }, 1000);
+    }
+
+    function adjustTimer(delta) {
+      timerRemaining = Math.max(5, timerRemaining + delta);
+      timerMax = Math.max(timerMax, timerRemaining);
+      updateTimerUI();
+    }
+
+    function stopTimer() {
+      clearInterval(timerInterval);
+      timerRemaining = 0;
+      document.getElementById('rest-timer-bar').classList.add('hidden');
+    }
+
+    function updateTimerUI() {
+      const disp = document.getElementById('timer-display');
+      const prog = document.getElementById('timer-progress');
+      if (disp && prog) {
+        disp.textContent = `${timerRemaining}s`;
+        const pct = Math.max(0, Math.min(100, (timerRemaining / timerMax) * 100));
+        prog.style.width = `${pct}%`;
+      }
+    }
+
+    // ==========================================
+    // 6. HELPER FUNCTIONS
+    // ==========================================
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      const text = document.getElementById('toast-text');
+      text.textContent = msg;
+      toast.classList.remove('hidden');
+      toast.classList.add('flex');
+      clearTimeout(window._toastTimer);
+      window._toastTimer = setTimeout(() => {
+        toast.classList.add('hidden');
+        toast.classList.remove('flex');
+      }, 2800);
+    }
+
+    function getTodayISO() {
+      return new Date().toISOString().split('T')[0];
+    }
+
+    function isCheckedInToday() {
+      return STATE.workoutLogs.includes(getTodayISO());
+    }
+
+    function getWeeklyCount() {
+      const now = new Date();
+      const weekAgo = new Date();
+      weekAgo.setDate(now.getDate() - 7);
+      return STATE.workoutLogs.filter(d => new Date(d) >= weekAgo).length;
+    }
+
+    function calculateNutritionTargets() {
+      const w = STATE.bodyWeight || 75;
+      let kcal = Math.round(w * 29);
+      let protein = Math.round(w * 1.8);
+      if (STATE.nutritionGoal === 'lose') {
+        kcal = Math.round(w * 24);
+        protein = Math.round(w * 2.0);
+      } else if (STATE.nutritionGoal === 'gain') {
+        kcal = Math.round(w * 34);
+        protein = Math.round(w * 1.8);
+      }
+      return { kcal, protein };
+    }
+
+    function updateHeaderUI() {
+      const badge = document.getElementById('header-emergency-badge');
+      const streak = document.getElementById('header-streak-text');
+      if (badge) {
+        badge.classList.toggle('hidden', !STATE.emergencyMode);
+      }
+      if (streak) {
+        streak.textContent = `${getWeeklyCount()} / ${STATE.weeklyGoal} Woche`;
+      }
+    }
+
+    // ==========================================
+    // 7. USER INTERACTIONS
+    // ==========================================
+    function switchTab(tab) {
+      STATE.activeTab = tab;
+      ['dashboard', 'workout', 'nutrition'].forEach(t => {
+        const btn = document.getElementById(`nav-${t}`);
+        if (t === tab) {
+          btn.className = 'flex flex-col items-center justify-center py-2 rounded-2xl transition text-emerald-400 bg-emerald-500/15 font-extrabold';
+        } else {
+          btn.className = 'flex flex-col items-center justify-center py-2 rounded-2xl transition text-slate-400 hover:text-slate-200';
+        }
+      });
+      renderApp();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function toggleCheckInToday() {
+      const today = getTodayISO();
+      if (isCheckedInToday()) {
+        STATE.workoutLogs = STATE.workoutLogs.filter(d => d !== today);
+        showToast('Check-in für heute zurückgesetzt.');
+      } else {
+        STATE.workoutLogs.push(today);
+        showToast('🎉 Mega stark! Du warst heute im Gym!');
+      }
+      saveState();
+      renderApp();
+    }
+
+    function toggleEmergencyMode() {
+      STATE.emergencyMode = !STATE.emergencyMode;
+      saveState();
+      showToast(
+        STATE.emergencyMode 
+          ? '⚡ 10-Minuten-Notfallplan aktiv: Heute nur 2 schnelle Übungen!' 
+          : 'Normaler Ganzkörper-Plan wieder aktiviert.'
+      );
+      renderApp();
+    }
+
+    function setWeeklyGoal(goal) {
+      STATE.weeklyGoal = goal;
+      saveState();
+      renderApp();
+    }
+
+    function updateBodyWeight(val) {
+      const num = parseFloat(val);
+      if (!isNaN(num) && num >= 35 && num <= 250) {
+        STATE.bodyWeight = num;
+        saveState();
+        // Update calculated labels in-place without losing input focus
+        const targets = calculateNutritionTargets();
+        const kcalEl = document.getElementById('calc-kcal');
+        const protEl = document.getElementById('calc-protein');
+        if (kcalEl) kcalEl.textContent = `${targets.kcal} kcal`;
+        if (protEl) protEl.textContent = `${targets.protein}g Eiweiß`;
+      }
+    }
+
+    function setNutritionGoal(goal) {
+      STATE.nutritionGoal = goal;
+      saveState();
+      renderApp();
+    }
+
+    function selectWorkoutPlan(planKey) {
+      if (planKey === 'emergency') {
+        STATE.emergencyMode = true;
+      } else {
+        STATE.selectedPlan = planKey;
+        STATE.emergencyMode = false;
+      }
+      saveState();
+      renderApp();
+    }
+
+    function toggleSteps(exId) {
+      STATE.expandedSteps[exId] = !STATE.expandedSteps[exId];
+      renderApp();
+    }
+
+    function updateExerciseWeight(exId, val) {
+      STATE.weights[exId] = val;
+      saveState();
+    }
+
+    function toggleSetComplete(exId, setNumber) {
+      const key = `${exId}_s${setNumber}`;
+      const isNowDone = !STATE.completedSets[key];
+      STATE.completedSets[key] = isNowDone;
+      saveState();
+      if (isNowDone) {
+        startTimer(60);
+      }
+      renderApp();
+    }
+
+    function resetAllSets() {
+      STATE.completedSets = {};
+      saveState();
+      showToast('🔄 Sätze für ein neues Training zurückgesetzt.');
+      renderApp();
+    }
+
+    function selectMeal(category, mealId) {
+      STATE.selectedMeals[category] = mealId;
+      saveState();
+      renderApp();
+    }
+
+    function addMealIngredients(category, mealId, event) {
+      if (event) event.stopPropagation();
+      const meal = MEALS[category].find(m => m.id === mealId);
+      if (!meal) return;
+      meal.ingredients.forEach((ing, i) => {
+        STATE.shoppingList.unshift({
+          id: Date.now() + i + Math.random(),
+          text: ing,
+          checked: false
+        });
+      });
+      saveState();
+      showToast('🛒 Zutaten auf deine Einkaufsliste gesetzt!');
+      renderApp();
+    }
+
+    function addCustomShoppingItem(e) {
+      e.preventDefault();
+      const input = document.getElementById('custom-shop-input');
+      if (!input || !input.value.trim()) return;
+      STATE.shoppingList.unshift({
+        id: Date.now(),
+        text: input.value.trim(),
+        checked: false
+      });
+      input.value = '';
+      saveState();
+      renderApp();
+    }
+
+    function toggleShoppingItem(id) {
+      STATE.shoppingList = STATE.shoppingList.map(item => 
+        item.id === id ? { ...item, checked: !item.checked } : item
+      );
+      saveState();
+      renderApp();
+    }
+
+    function clearCheckedShoppingItems() {
+      STATE.shoppingList = STATE.shoppingList.filter(i => !i.checked);
+      saveState();
+      renderApp();
+    }
+
+    // ==========================================
+    // 8. VIEW RENDERERS
+    // ==========================================
+    function renderDashboard() {
+      const checkedToday = isCheckedInToday();
+      const weeklyCount = getWeeklyCount();
+      const progressPct = Math.min(100, Math.round((weeklyCount / STATE.weeklyGoal) * 100));
+      const targets = calculateNutritionTargets();
+
+      return `
+        <div class="space-y-5 animate-view">
+          
+          <!-- HERO MOTIVATION & CHECK-IN CARD -->
+          <div class="rounded-3xl bg-gradient-to-br from-slate-900 via-slate-900 to-emerald-950/70 border border-slate-800 p-5 shadow-xl space-y-5">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div class="space-y-1.5">
+                <span class="inline-flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wider text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-full">
+                  ✨ Dein Neustart zählt ab heute
+                </span>
+                <h2 class="text-xl sm:text-2xl font-black text-white leading-tight">
+                  Vergiss die letzten 3 Monate.
+                </h2>
+                <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                  Du musst nicht motiviert sein – du musst nur kurz durch die Tür gehen. Selbst 10 Minuten im Studio sind 100% besser als auf der Couch!
+                </p>
+              </div>
+
+              <!-- Big Touch Check-In Button -->
+              <button onclick="toggleCheckInToday()" class="w-full sm:w-auto shrink-0 px-6 py-4 rounded-2xl font-black text-sm flex items-center justify-center gap-2.5 transition active:scale-95 shadow-lg ${
+                checkedToday 
+                  ? 'bg-emerald-500/20 text-emerald-300 border-2 border-emerald-500/50' 
+                  : 'bg-gradient-to-r from-emerald-500 to-teal-400 text-slate-950 shadow-emerald-500/20'
+              }">
+                <span>${checkedToday ? '✅' : '🏋️'}</span>
+                <span>${checkedToday ? 'Heute im Gym eingecheckt!' : 'Ich bin im Gym! (Check-in)'}</span>
+              </button>
+            </div>
+
+            <!-- Weekly Streak Progress -->
+            <div class="pt-4 border-t border-slate-800/90 space-y-2">
+              <div class="flex items-center justify-between text-xs">
+                <span class="text-slate-400 font-semibold">Wochen-Ziel (${STATE.weeklyGoal}x pro Woche reicht völlig!):</span>
+                <span class="font-extrabold text-emerald-400">${weeklyCount} von ${STATE.weeklyGoal} geschafft</span>
+              </div>
+              <div class="w-full h-3 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
+                <div class="h-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-500 rounded-full" style="width: ${progressPct}%"></div>
+              </div>
+              <div class="flex items-center justify-between pt-1">
+                <span class="text-[11px] text-slate-500">Gesamt-Check-ins bisher: <strong class="text-slate-300">${STATE.workoutLogs.length} Trainings</strong></span>
+                <div class="flex items-center gap-1.5">
+                  <span class="text-[11px] text-slate-400">Wochenziel:</span>
+                  <button onclick="setWeeklyGoal(2)" class="px-2.5 py-1 rounded-lg text-xs font-extrabold ${STATE.weeklyGoal === 2 ? 'bg-emerald-500 text-slate-950' : 'bg-slate-800 text-slate-400'}">2x</button>
+                  <button onclick="setWeeklyGoal(3)" class="px-2.5 py-1 rounded-lg text-xs font-extrabold ${STATE.weeklyGoal === 3 ? 'bg-emerald-500 text-slate-950' : 'bg-slate-800 text-slate-400'}">3x</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 10-MINUTE EMERGENCY RULE SWITCH -->
+          <div class="rounded-3xl border p-5 transition-all ${
+            STATE.emergencyMode 
+              ? 'bg-amber-500/15 border-amber-500/60 shadow-lg shadow-amber-500/5' 
+              : 'bg-slate-900 border-slate-800'
+          }">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div class="flex items-start gap-3.5">
+                <div class="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 text-xl ${
+                  STATE.emergencyMode ? 'bg-amber-500 text-slate-950' : 'bg-slate-800 text-amber-400'
+                }">
+                  ⚡
+                </div>
+                <div>
+                  <div class="flex items-center gap-2">
+                    <h3 class="font-extrabold text-base text-white">Der 10-Minuten-Notfallplan</h3>
+                    ${STATE.emergencyMode ? '<span class="text-[10px] bg-amber-500 text-slate-950 font-black px-2 py-0.5 rounded-md">AKTIV</span>' : ''}
+                  </div>
+                  <p class="text-xs text-slate-300 mt-1 leading-relaxed">
+                    Müde nach der Arbeit? Keine Motivation? Dieser Schalter kürzt deinen Trainingsplan sofort auf <strong class="text-amber-300">nur 2 schnelle Grundübungen à 2 Sätze</strong> herunter.
+                  </p>
+                </div>
+              </div>
+
+              <button onclick="toggleEmergencyMode()" class="w-full sm:w-auto shrink-0 px-4 py-3.5 rounded-2xl font-extrabold text-xs sm:text-sm transition active:scale-95 ${
+                STATE.emergencyMode 
+                  ? 'bg-slate-800 text-white border border-slate-700' 
+                  : 'bg-amber-500 text-slate-950 shadow-md'
+              }">
+                ${STATE.emergencyMode ? 'Normalen Plan wieder aktivieren' : 'Keine Lust heute? 10-Min-Plan aktivieren'}
+              </button>
+            </div>
+          </div>
+
+          <!-- BODY WEIGHT & AUTOMATIC CALORIE/PROTEIN CALCULATOR -->
+          <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5 space-y-4">
+            <div class="flex items-center justify-between gap-2">
+              <div>
+                <h3 class="font-extrabold text-base text-white">Dein Körpergewicht & Tagesziel</h3>
+                <p class="text-xs text-slate-400">Berechnet automatisch dein optimales Kalorien- & Eiweißziel</p>
+              </div>
+              <div class="flex items-center gap-1.5 bg-slate-950 border border-slate-700 px-3 py-2 rounded-2xl">
+                <input 
+                  type="number" 
+                  inputmode="decimal"
+                  value="${STATE.bodyWeight}" 
+                  oninput="updateBodyWeight(this.value)"
+                  class="w-14 bg-transparent text-white font-black text-base text-center focus:outline-none"
+                />
+                <span class="text-xs font-bold text-emerald-400">kg</span>
+              </div>
+            </div>
+
+            <!-- Goal Selector Pills -->
+            <div class="grid grid-cols-3 gap-2">
+              <button onclick="setNutritionGoal('lose')" class="py-2.5 px-2 rounded-xl text-xs font-extrabold border transition ${
+                STATE.nutritionGoal === 'lose' ? 'bg-emerald-500/20 border-emerald-500 text-emerald-300' : 'bg-slate-950 border-slate-800 text-slate-400'
+              }">🔥 Abnehmen</button>
+              <button onclick="setNutritionGoal('recomp')" class="py-2.5 px-2 rounded-xl text-xs font-extrabold border transition ${
+                STATE.nutritionGoal === 'recomp' ? 'bg-emerald-500/20 border-emerald-500 text-emerald-300' : 'bg-slate-950 border-slate-800 text-slate-400'
+              }">⚡ Fit & Straff</button>
+              <button onclick="setNutritionGoal('gain')" class="py-2.5 px-2 rounded-xl text-xs font-extrabold border transition ${
+                STATE.nutritionGoal === 'gain' ? 'bg-emerald-500/20 border-emerald-500 text-emerald-300' : 'bg-slate-950 border-slate-800 text-slate-400'
+              }">💪 Muskelaufbau</button>
+            </div>
+
+            <!-- Calculated Output Boxes -->
+            <div class="grid grid-cols-2 gap-3 pt-1">
+              <div class="bg-slate-950 border border-slate-800/90 rounded-2xl p-3.5">
+                <span class="text-[11px] text-slate-400 font-semibold block">Tägliche Kalorien</span>
+                <span id="calc-kcal" class="text-lg font-black text-white">${targets.kcal} kcal</span>
+              </div>
+              <div class="bg-slate-950 border border-emerald-500/30 rounded-2xl p-3.5">
+                <span class="text-[11px] text-emerald-400 font-semibold block">Tägliches Eiweiß-Ziel</span>
+                <span id="calc-protein" class="text-lg font-black text-emerald-400">${targets.protein}g Eiweiß</span>
+              </div>
+            </div>
+
+            <!-- Quick Action Buttons to Tabs -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+              <button onclick="switchTab('workout')" class="w-full py-3.5 bg-emerald-500 active:bg-emerald-400 text-slate-950 font-black text-xs sm:text-sm rounded-2xl transition flex items-center justify-center gap-2">
+                <span>🏋️ Zum Trainingsplan mit Bildern</span>
+              </button>
+              <button onclick="switchTab('nutrition')" class="w-full py-3.5 bg-slate-800 active:bg-slate-700 text-white font-extrabold text-xs sm:text-sm rounded-2xl border border-slate-700 transition flex items-center justify-center gap-2">
+                <span>🥗 Zum Essensplan & Einkauf</span>
+              </button>
+            </div>
+          </div>
+
+        </div>
+      `;
+    }
+
+    function renderWorkout() {
+      const currentPlan = WORKOUT_PLANS[STATE.selectedPlan] || WORKOUT_PLANS.planA;
+      const exercises = STATE.emergencyMode 
+        ? currentPlan.exercises.filter(e => e.isEmergency) 
+        : currentPlan.exercises;
+
+      const exercisesHTML = exercises.map(ex => {
+        const numSets = STATE.emergencyMode ? 2 : ex.sets;
+        const savedWeight = STATE.weights[ex.id] !== undefined ? STATE.weights[ex.id] : ex.defaultWeight;
+        const isStepsOpen = !!STATE.expandedSteps[ex.id];
+
+        let completedCount = 0;
+        let setButtonsHTML = '';
+        for (let s = 1; s <= numSets; s++) {
+          const isDone = !!STATE.completedSets[`${ex.id}_s${s}`];
+          if (isDone) completedCount++;
+          setButtonsHTML += `
+            <button 
+              onclick="toggleSetComplete('${ex.id}', ${s})"
+              class="py-3.5 px-2 rounded-2xl font-extrabold text-xs flex items-center justify-center gap-1.5 border transition active:scale-95 ${
+                isDone 
+                  ? 'bg-emerald-500 text-slate-950 border-emerald-400 shadow-lg shadow-emerald-500/20' 
+                  : 'bg-slate-950 text-slate-200 border-slate-800 hover:border-slate-700'
+              }"
+            >
+              <span>${isDone ? '✓' : '○'}</span>
+              <span>Satz ${s}</span>
+            </button>
+          `;
+        }
+
+        const allDone = completedCount === numSets;
+
+        return `
+          <div class="rounded-3xl border transition-all overflow-hidden ${
+            allDone ? 'bg-emerald-950/20 border-emerald-500/50' : 'bg-slate-900 border-slate-800'
+          }">
+            <div class="p-4 sm:p-5 space-y-4">
+              
+              <!-- Exercise Header & Weight Input -->
+              <div class="flex items-start justify-between gap-3">
+                <div>
+                  <span class="text-[10px] font-extrabold uppercase tracking-wider text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-full">
+                    ${ex.muscle}
+                  </span>
+                  <h3 class="text-base sm:text-lg font-black text-white mt-1.5 flex items-center gap-1.5">
+                    <span>${ex.name}</span>
+                    ${allDone ? '<span class="text-emerald-400">✅</span>' : ''}
+                  </h3>
+                  <p class="text-xs text-slate-400">${ex.machine} • <strong>${numSets} Sätze × ${ex.reps}</strong></p>
+                </div>
+
+                <!-- Weight Input Box -->
+                <div class="bg-slate-950 border border-slate-800 rounded-2xl p-2 text-center shrink-0">
+                  <label class="block text-[9px] text-slate-400 uppercase font-extrabold">Gewicht</label>
+                  <div class="flex items-center gap-1 mt-0.5">
+                    <input 
+                      type="number" 
+                      inputmode="decimal"
+                      value="${savedWeight}" 
+                      oninput="updateExerciseWeight('${ex.id}', this.value)"
+                      class="w-12 bg-slate-900 text-white font-black text-sm text-center py-1 rounded-lg border border-slate-700 focus:border-emerald-500 focus:outline-none"
+                    />
+                    <span class="text-xs font-bold text-slate-400">kg</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- SVG Illustration of Machine & Target Muscle -->
+              <div>
+                ${getExerciseSVG(ex.svg)}
+              </div>
+
+              <!-- Accordion Toggle for Step-by-Step Instructions -->
+              <button 
+                onclick="toggleSteps('${ex.id}')"
+                class="w-full py-2.5 px-3 bg-slate-950/90 border border-slate-800 rounded-xl text-xs font-bold text-emerald-400 flex items-center justify-between"
+              >
+                <span>ℹ️ Wie stelle ich das Gerät ein & worauf achten?</span>
+                <span>${isStepsOpen ? '▲' : '▼'}</span>
+              </button>
+
+              ${isStepsOpen ? `
+                <div class="bg-slate-950 border border-slate-800 rounded-2xl p-3.5 space-y-2 text-xs text-slate-300">
+                  ${ex.steps.map((step, idx) => `
+                    <div class="flex items-start gap-2.5">
+                      <span class="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 font-black flex items-center justify-center shrink-0 text-[11px]">${idx + 1}</span>
+                      <span class="leading-relaxed">${step}</span>
+                    </div>
+                  `).join('')}
+                </div>
+              ` : ''}
+
+              <!-- Interactive Set Check Buttons -->
+              <div class="space-y-1.5 pt-1">
+                <div class="flex items-center justify-between text-[11px] text-slate-400">
+                  <span>Satz antippen zum Abhaken (startet 60s Pause):</span>
+                  <button onclick="startTimer(60)" class="text-emerald-400 font-bold">⏱️ 60s Timer</button>
+                </div>
+                <div class="grid ${numSets === 2 ? 'grid-cols-2' : 'grid-cols-3'} gap-2.5">
+                  ${setButtonsHTML}
+                </div>
+              </div>
+
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      return `
+        <div class="space-y-5 animate-view">
+          
+          <!-- Plan Switcher Bar (Training A / Training B / 10-Min Emergency) -->
+          <div class="bg-slate-900 border border-slate-800 rounded-3xl p-4 space-y-3.5">
+            <div class="flex items-center justify-between">
+              <div>
+                <h2 class="text-lg font-black text-white">Dein Geräte-Trainingsplan</h2>
+                <p class="text-xs text-slate-400">${STATE.emergencyMode ? '⚡ 10-Minuten-Notfallmodus (2 Grundübungen)' : currentPlan.subtitle}</p>
+              </div>
+              <button onclick="resetAllSets()" title="Sätze zurücksetzen" class="px-3 py-2 bg-slate-800 active:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold border border-slate-700">
+                🔄 Reset
+              </button>
+            </div>
+
+            <!-- 3-Way Switcher -->
+            <div class="grid grid-cols-3 gap-2 bg-slate-950 p-1.5 rounded-2xl border border-slate-800">
+              <button 
+                onclick="selectWorkoutPlan('planA')" 
+                class="py-2.5 px-2 rounded-xl text-xs font-extrabold transition ${
+                  !STATE.emergencyMode && STATE.selectedPlan === 'planA' 
+                    ? 'bg-emerald-500 text-slate-950 shadow' 
+                    : 'text-slate-400'
+                }"
+              >Training A</button>
+              <button 
+                onclick="selectWorkoutPlan('planB')" 
+                class="py-2.5 px-2 rounded-xl text-xs font-extrabold transition ${
+                  !STATE.emergencyMode && STATE.selectedPlan === 'planB' 
+                    ? 'bg-emerald-500 text-slate-950 shadow' 
+                    : 'text-slate-400'
+                }"
+              >Training B</button>
+              <button 
+                onclick="selectWorkoutPlan('emergency')" 
+                class="py-2.5 px-2 rounded-xl text-xs font-extrabold transition ${
+                  STATE.emergencyMode 
+                    ? 'bg-amber-500 text-slate-950 shadow' 
+                    : 'text-amber-400/90'
+                }"
+              >⚡ 10-Min Plan</button>
+            </div>
+
+            <div class="bg-slate-950/90 border border-slate-800/80 rounded-2xl px-3.5 py-2.5 text-xs text-slate-300 flex items-center gap-2">
+              <span>🚶</span>
+              <span><strong>Vorab 5 Min. Warm-up:</strong> Locker auf dem Laufband gehen oder Crosstrainer.</span>
+            </div>
+          </div>
+
+          <!-- Exercises List -->
+          <div class="space-y-4">
+            ${exercisesHTML}
+          </div>
+
+          <!-- Complete Workout Footer -->
+          <div class="bg-gradient-to-r from-emerald-950/80 to-slate-900 border border-emerald-500/40 rounded-3xl p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div>
+              <h3 class="font-extrabold text-white text-base">Fertig für heute?</h3>
+              <p class="text-xs text-slate-300">Speichere dein Training direkt in deinem Wochen-Zähler!</p>
+            </div>
+            <button onclick="toggleCheckInToday()" class="w-full sm:w-auto px-5 py-3.5 rounded-2xl font-black text-xs sm:text-sm bg-emerald-500 text-slate-950 active:scale-95 transition">
+              ${isCheckedInToday() ? '✅ Heute bereits eingetragen!' : '🏆 Training als erledigt eintragen'}
+            </button>
+          </div>
+
+        </div>
+      `;
+    }
+
+    function renderNutrition() {
+      const targets = calculateNutritionTargets();
+
+      const categories = [
+        { key: 'breakfast', title: '🌅 1. Frühstück (5 Min.)', items: MEALS.breakfast },
+        { key: 'main', title: '☀️ 2. Mittag- & Abendessen (Schnell & Satt)', items: MEALS.main },
+        { key: 'snack', title: '🍎 3. Schnelle Snacks zwischendurch', items: MEALS.snack },
+        { key: 'shake', title: '🥤 4. Post-Workout Shake (Nach dem Gym)', items: MEALS.shake }
+      ];
+
+      // Calculate selected daily macros
+      let selKcal = 0;
+      let selProt = 0;
+      categories.forEach(c => {
+        const found = c.items.find(m => m.id === STATE.selectedMeals[c.key]) || c.items[0];
+        if (found) {
+          selKcal += found.kcal;
+          selProt += found.protein;
+        }
+      });
+
+      const categoriesHTML = categories.map(cat => {
+        const cards = cat.items.map(meal => {
+          const isSelected = STATE.selectedMeals[cat.key] === meal.id;
+          return `
+            <div 
+              onclick="selectMeal('${cat.key}', '${meal.id}')"
+              class="cursor-pointer rounded-3xl border p-4 flex flex-col justify-between transition ${
+                isSelected 
+                  ? 'bg-emerald-950/25 border-emerald-500 shadow-lg shadow-emerald-500/5' 
+                  : 'bg-slate-900 border-slate-800'
+              }"
+            >
+              <div>
+                <div class="flex items-center justify-between gap-2 mb-2">
+                  <span class="text-[11px] font-bold bg-slate-800 text-slate-300 px-2.5 py-0.5 rounded-lg">⏱️ ${meal.time}</span>
+                  <div class="flex items-center gap-1.5 text-xs font-extrabold">
+                    <span class="text-slate-300">${meal.kcal} kcal</span>
+                    <span class="text-emerald-400 bg-emerald-500/15 px-2 py-0.5 rounded-lg">${meal.protein}g Protein</span>
+                  </div>
+                </div>
+
+                <h4 class="font-extrabold text-white text-sm flex items-center justify-between gap-2">
+                  <span>${meal.name}</span>
+                  ${isSelected ? '<span class="text-emerald-400">✓</span>' : ''}
+                </h4>
+                <p class="text-xs text-slate-400 mt-1.5 leading-relaxed">${meal.prep}</p>
+
+                <div class="mt-3 pt-2.5 border-t border-slate-800/80 text-xs text-slate-300">
+                  <span class="font-bold text-[11px] text-slate-400 uppercase block mb-1">Zutaten:</span>
+                  ${meal.ingredients.map(i => `<div>• ${i}</div>`).join('')}
+                </div>
+              </div>
+
+              <button 
+                onclick="addMealIngredients('${cat.key}', '${meal.id}', event)"
+                class="mt-4 w-full py-2.5 rounded-xl bg-slate-800 active:bg-slate-700 text-emerald-400 font-extrabold text-xs border border-slate-700 flex items-center justify-center gap-1.5"
+              >
+                <span>🛒 Zutaten auf Einkaufsliste</span>
+              </button>
+            </div>
+          `;
+        }).join('');
+
+        return `
+          <div class="space-y-3">
+            <h3 class="text-sm sm:text-base font-black text-white px-1">${cat.title}</h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+              ${cards}
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      const shopItemsHTML = STATE.shoppingList.length === 0 
+        ? `<p class="text-xs text-slate-500 py-2">Keine Artikel auf der Liste. Tippe oben bei einem Gericht auf „Zutaten auf Einkaufsliste“.</p>`
+        : STATE.shoppingList.map(item => `
+            <div 
+              onclick="toggleShoppingItem(${item.id})"
+              class="p-3.5 rounded-2xl border text-xs font-semibold flex items-center gap-3 cursor-pointer transition active:scale-[0.99] ${
+                item.checked 
+                  ? 'bg-slate-950/40 border-slate-800/50 text-slate-500 line-through' 
+                  : 'bg-slate-950 border-slate-800 text-slate-200'
+              }"
+            >
+              <div class="w-5 h-5 rounded-md flex items-center justify-center border ${
+                item.checked ? 'bg-emerald-500 border-emerald-500 text-slate-950 font-black' : 'border-slate-600'
+              }">
+                ${item.checked ? '✓' : ''}
+              </div>
+              <span>${item.text}</span>
+            </div>
+          `).join('');
+
+      return `
+        <div class="space-y-6 animate-view">
+          
+          <!-- Daily Calorie & Protein Summary Card -->
+          <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5 space-y-4">
+            <div class="flex items-center justify-between">
+              <div>
+                <h2 class="text-lg font-black text-white">Dein Baukasten-Essensplan</h2>
+                <p class="text-xs text-slate-400">Berechnet für <strong>${STATE.bodyWeight} kg</strong> Körpergewicht</p>
+              </div>
+              <button onclick="switchTab('dashboard')" class="text-xs text-emerald-400 font-bold underline">Gewicht ändern</button>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <div class="bg-slate-950 border border-slate-800 rounded-2xl p-3.5">
+                <span class="text-[11px] text-slate-400 block">Dein Tagesziel</span>
+                <span class="text-base sm:text-lg font-black text-white">ca. ${targets.kcal} kcal</span>
+                <span class="text-[11px] text-emerald-400 font-bold block mt-0.5">Ziel: ${targets.protein}g Eiweiß</span>
+              </div>
+              <div class="bg-slate-950 border border-emerald-500/30 rounded-2xl p-3.5">
+                <span class="text-[11px] text-slate-400 block">Aktuelle Auswahl</span>
+                <span class="text-base sm:text-lg font-black text-white">${selKcal} kcal</span>
+                <span class="text-[11px] text-emerald-400 font-bold block mt-0.5">Liefert: ${selProt}g Eiweiß</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 4 Meal Categories -->
+          ${categoriesHTML}
+
+          <!-- Interactive Supermarket Shopping List -->
+          <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5 space-y-4">
+            <div class="flex items-center justify-between">
+              <h3 class="text-base font-black text-white flex items-center gap-2">
+                <span>🛒 Deine Supermarkt-Einkaufsliste</span>
+              </h3>
+              ${STATE.shoppingList.some(i => i.checked) ? `
+                <button onclick="clearCheckedShoppingItems()" class="text-xs text-rose-400 font-bold">
+                  Erledigte löschen
+                </button>
+              ` : ''}
+            </div>
+
+            <form onsubmit="addCustomShoppingItem(event)" class="flex gap-2">
+              <input 
+                id="custom-shop-input"
+                type="text" 
+                placeholder="Eigenen Artikel eintippen (z.B. Eier, Milch)..." 
+                class="flex-1 bg-slate-950 border border-slate-800 rounded-2xl px-3.5 py-3 text-xs sm:text-sm text-white focus:outline-none focus:border-emerald-500"
+              />
+              <button type="submit" class="bg-emerald-500 active:bg-emerald-400 text-slate-950 font-black px-4 py-3 rounded-2xl text-xs shrink-0">
+                + Neu
+              </button>
+            </form>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              ${shopItemsHTML}
+            </div>
+          </div>
+
+        </div>
+      `;
+    }
+
+    function renderApp() {
+      updateHeaderUI();
+      const container = document.getElementById('app-content');
+      if (STATE.activeTab === 'dashboard') {
+        container.innerHTML = renderDashboard();
+      } else if (STATE.activeTab === 'workout') {
+        container.innerHTML = renderWorkout();
+      } else {
+        container.innerHTML = renderNutrition();
+      }
+    }
+
+    // Initialize on load
+    window.addEventListener('DOMContentLoaded', () => {
+      switchTab('dashboard');
+    });
+  </script>
+</body>
+</html>
